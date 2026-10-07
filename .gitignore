@@ -1,0 +1,6 @@
+.venv/
+.pip-cache/
+__pycache__/
+*.pyc
+settings.ini
+tests/out/
