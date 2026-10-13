@@ -11,14 +11,14 @@ the PDF page that export writes.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from PySide6.QtCore import QPointF, QRectF, Qt, Signal
 from PySide6.QtGui import (QColor, QFont, QKeyEvent, QMouseEvent, QPainter,
                            QPainterPath, QPen, QWheelEvent)
 from PySide6.QtWidgets import QFrame, QGraphicsScene, QGraphicsView, QToolTip
 
-from .layers import BARCODE_MESSAGE, BarcodeItem, Layer, is_supported
+from .layers import BARCODE_MESSAGE, BarcodeItem, Layer, TextLayer, TextStyle, is_supported
 from .spec import PT_PER_IN, CoverSpec
 
 SNAP_PX = 8  # snap distance, in screen pixels at any zoom
@@ -46,7 +46,7 @@ GUIDE_NAMES = {
     "spine": "Spine edge: the cover folds here",
     "safe": "Safe area border: keep text and faces inside",
     "spine-safe": "Spine safe area border: keep spine text inside",
-    "center": "Centre line",
+    "center": "Center line",
 }
 GUIDE_HOVER_PX = 4
 SNAP_COLOR = QColor(230, 0, 200)
@@ -83,7 +83,8 @@ class _Drag:
 class CoverView(QGraphicsView):
     selectionChanged = Signal(object)  # Layer or None
     geometryChanged = Signal(object)  # Layer
-    layersChanged = Signal()  # added, removed or reordered
+    layersChanged = Signal()  # added, removed, reordered or renamed
+    editTextRequested = Signal(object)  # TextLayer double-clicked
     statusMessage = Signal(str)
     cursorMoved = Signal(float, float)  # inches
     zoomChanged = Signal(float)  # percent of physical size
@@ -137,7 +138,7 @@ class CoverView(QGraphicsView):
     def change_spec(self, spec: CoverSpec) -> None:
         """Switch to a new cover size, carrying the pictures along.
 
-        Each picture keeps its place on the part of the cover its centre is on:
+        Each picture keeps its place on the part of the cover its center is on:
         the back, spine or front across, the top or bottom half down. One that
         covered the whole cover is scaled, keeping its ratio, to cover it still,
         and one that filled the spine's width is stretched to the new spine.
@@ -240,6 +241,22 @@ class CoverView(QGraphicsView):
         layer.set_rect(r)
         self.viewport().update()
         self.geometryChanged.emit(layer)
+
+    def set_text_style(self, layer: TextLayer, style: TextStyle) -> None:
+        """Restyle a text box, growing it downwards if the text no longer fits."""
+        renamed = layer.name
+        layer.set_style(style)
+        self.set_layer_rect(layer, layer.fitted_rect(grow_only=True))
+        if layer.name != renamed:
+            self.layersChanged.emit()
+
+    def rotate_text(self, layer: TextLayer) -> None:
+        """A quarter turn counterclockwise, about the box's center."""
+        r = layer.rect()
+        turned = QRectF(0, 0, r.height(), r.width())
+        turned.moveCenter(r.center())
+        layer.set_style(replace(layer.style, rotation=(layer.style.rotation + 90) % 360))
+        self.set_layer_rect(layer, turned)
 
     # --- zoom -------------------------------------------------------------
 
@@ -479,6 +496,8 @@ class CoverView(QGraphicsView):
 
     def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:
         self.mousePressEvent(event)
+        if event.button() == Qt.MouseButton.LeftButton and isinstance(self.selected, TextLayer):
+            self.editTextRequested.emit(self.selected)
 
     # --- keyboard ---------------------------------------------------------
 

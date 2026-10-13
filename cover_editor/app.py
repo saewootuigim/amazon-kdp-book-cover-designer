@@ -5,19 +5,21 @@ from __future__ import annotations
 import os
 import sys
 
-from PySide6.QtCore import QPointF, QSettings, Qt
+from PySide6.QtCore import QPoint, QPointF, QSettings, Qt
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (QApplication, QDockWidget, QFileDialog, QInputDialog, QLabel,
-                               QMainWindow, QMessageBox, QScrollArea)
+                               QMainWindow, QMessageBox, QScrollArea, QToolBar)
 
 from .canvas import CoverView
 from .export import export_pdf
-from .layers import IMAGE_EXTS, PDF_EXTS, Layer, is_supported, load_source, pdf_page_count
+from .layers import (IMAGE_EXTS, PDF_EXTS, Layer, TextLayer, is_supported, load_source,
+                     pdf_page_count)
 from .panel import ToolPanel
 from .project import load_project, save_project
 from .rulers import Workspace
 from .setup_dialog import CoverSetupDialog
 from .spec import CoverSpec
+from .text_editor import TextEditor
 
 APP_NAME = "Book Cover Editor"
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -58,6 +60,8 @@ class MainWindow(QMainWindow):
         self.statusBar().addPermanentWidget(self.pos_label)
         self.statusBar().addPermanentWidget(self.zoom_label)
 
+        self.text_editor = TextEditor(self.view, self)
+
         self._build_menus()
 
         self.panel.addRequested.connect(self.add_pictures)
@@ -70,6 +74,7 @@ class MainWindow(QMainWindow):
         self.view.filesDropped.connect(self._files_dropped)
         self.view.layersChanged.connect(self._touch)
         self.view.geometryChanged.connect(self._touch)
+        self.view.editTextRequested.connect(lambda _layer: self.show_text_editor())
 
         self.resize(1400, 860)
         geometry = self.settings.value("window/geometry")
@@ -97,10 +102,22 @@ class MainWindow(QMainWindow):
         self._action(m, "&Save project", self.save_project, QKeySequence.StandardKey.Save)
         self._action(m, "Save project &as…", self.save_project_as, "Ctrl+Shift+S")
         m.addSeparator()
-        self._action(m, "&Add picture…", self.add_pictures, "Ctrl+O")
-        self._action(m, "Save as P&DF…", self.export, "Ctrl+E")
+        add_picture = self._action(m, "&Add picture…", self.add_pictures, "Ctrl+O")
+        insert_text = self._action(m, "Insert &text", self.insert_text, "Ctrl+T")
+        export = self._action(m, "Save as P&DF…", self.export, "Ctrl+E")
         m.addSeparator()
         self._action(m, "E&xit", self.close, "Alt+F4")
+
+        bar = QToolBar("Toolbar")
+        bar.setObjectName("toolbar")
+        bar.setMovable(False)
+        bar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
+        add_picture.setToolTip("Add picture (Ctrl+O)")
+        insert_text.setToolTip("Insert a text box (Ctrl+T). Double-click a text box to edit it.")
+        export.setToolTip("Save as PDF (Ctrl+E)")
+        for act in (add_picture, insert_text, export):
+            bar.addAction(act)
+        self.addToolBar(Qt.ToolBarArea.TopToolBarArea, bar)
 
         m = self.menuBar().addMenu("&Arrange")
         sel = lambda op: (lambda: self.view.selected and self.view.reorder(self.view.selected, op))
@@ -109,7 +126,7 @@ class MainWindow(QMainWindow):
         self._action(m, "Send &backward", sel("down"), "Ctrl+[")
         self._action(m, "Send to bac&k", sel("bottom"), "Ctrl+Shift+[")
         m.addSeparator()
-        self._action(m, "&Delete picture",
+        self._action(m, "&Delete selected",
                      lambda: self.view.selected and self.view.remove_layer(self.view.selected))
 
         m = self.menuBar().addMenu("&View")
@@ -186,6 +203,25 @@ class MainWindow(QMainWindow):
             self.view.add_layer(Layer(source), at)
             self.statusBar().showMessage(f"Added {source.name}", 4000)
 
+    # --- text -------------------------------------------------------------
+
+    def insert_text(self) -> None:
+        self.view.add_layer(TextLayer())  # selecting it points the editor at it
+        self.show_text_editor()
+        self.statusBar().showMessage("Added a text box. Drag to move it, handles resize it; "
+                                     "double-click to edit it again.", 6000)
+
+    def show_text_editor(self) -> None:
+        ed = self.text_editor
+        if not ed.isVisible():
+            # Beside the cover, at the top-left of the canvas.
+            ed.move(self.centralWidget().mapToGlobal(self.centralWidget().rect().topLeft()) + QPoint(40, 40))
+        ed.show()
+        ed.raise_()
+        ed.activateWindow()
+        ed.text.setFocus()
+        ed.text.selectAll()
+
     # --- cover ------------------------------------------------------------
 
     def cover_setup(self) -> None:
@@ -234,7 +270,7 @@ class MainWindow(QMainWindow):
         self.view.apply_spec(spec)
         self.panel.refresh_cover(spec)
         for layer in layers:
-            # Placed straight from the file: add_layer would re-centre them.
+            # Placed straight from the file: add_layer would re-center them.
             self.view.scene().addItem(layer)
             self.view.layers.append(layer)
         self.view._restack()
@@ -305,6 +341,11 @@ class MainWindow(QMainWindow):
         QMessageBox.information(self, "How to use", (
             "<b>Add pictures</b> with Ctrl+O or by dragging files onto the cover. "
             "PDF, PNG, JPG, WebP, BMP, GIF and TIFF all work.<br><br>"
+            "<b>Insert text</b> (Ctrl+T, or the toolbar) adds a text box and opens the text "
+            "editor: font, size, color, a background color or transparent, and a font "
+            "outline. Move and resize the box like a picture; the text wraps to its width. "
+            "<b>Rotate</b> turns it a quarter turn counterclockwise. "
+            "Double-click a text box to edit it again.<br><br>"
             "<b>Move</b>: drag a picture. <b>Resize</b>: drag a handle — corners keep the "
             "ratio, edges stretch one side. Both snap to the guides and to other pictures; "
             "hold <b>Shift</b> while dragging to place freely. Arrow keys nudge by 0.01 in "
@@ -319,7 +360,7 @@ class MainWindow(QMainWindow):
             "which line is which.<br><br>"
             "<b>Zoom</b>: Ctrl+wheel, Ctrl+= / Ctrl+-, Ctrl+0 to fit. Pan with the middle "
             "mouse button or the scroll bars.<br><br>"
-            "<b>Barcode</b>: the grey box on the back cover is a placeholder. It cannot be "
+            "<b>Barcode</b>: the gray box on the back cover is a placeholder. It cannot be "
             "moved, stays above every picture, and is left out of the PDF unless you ask — "
             "Amazon prints the real barcode there, so keep important art out of it.<br><br>"
             "<b>Save as PDF</b> (Ctrl+E) writes one page at exactly the full cover size, "

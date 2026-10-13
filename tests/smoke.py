@@ -299,6 +299,107 @@ def main():
     check(close(view.spec.trim_height, 9, 1e-9) and panel.cover_fields["trim_height"].text() == "9",
           "zero height refused, field restored")
 
+    print("text")
+    from cover_editor.layers import TextLayer
+    view.clear_layers()
+    view.apply_spec(CoverSpec())
+    view.fit()
+    app.processEvents()
+    win.insert_text()
+    app.processEvents()
+    ed = win.text_editor
+    t = view.layers[-1]
+    check(isinstance(t, TextLayer) and view.selected is t, "Insert text adds and selects a text box")
+    check(ed.isVisible() and ed.layer is t and ed.text.isEnabled(), "text editor opens on it")
+    ed.text.setPlainText("THE TWEEDY SISTERS")
+    ed.size.setValue(40)
+    ed.color.set_color("#c00000")
+    ed.color.colorChanged.emit("#c00000")
+    ed.outline.setChecked(True)
+    ed.outline_color.set_color("#00c000")
+    ed.outline_color.colorChanged.emit("#00c000")
+    ed.outline_width.setValue(2)
+    ed.background.setChecked(True)
+    ed.background_color.set_color("#ffff00")
+    ed.background_color.colorChanged.emit("#ffff00")
+    st = t.style
+    check(st.text == "THE TWEEDY SISTERS" and st.size == 40 and st.color == "#c00000" and st.outline
+          and st.outline_color == "#00c000" and st.background and st.background_color == "#ffff00",
+          "editor changes reach the text box")
+    check(panel.layer_list.item(0).text() == "Text: THE TWEEDY SISTERS", "layer list shows the text")
+    check(t.rect().height() >= t.content_height() - 1e-6, "box grew to fit the text")
+    view.set_layer_rect(t, QRectF(spec.front().x * 72 + 36, 72, 4 * 72, t.rect().height()))
+    r0 = t.rect()
+    drag(view, r0.center(), r0.center() + QPointF(20, 30), mods=Qt.KeyboardModifier.ShiftModifier)
+    check(close(t.rect().x(), r0.x() + 20, 1 / view._scale()) and close(t.rect().y(), r0.y() + 30, 1 / view._scale()),
+          "text box moves by dragging")
+    r0 = t.rect()
+    edge = QPointF(r0.right(), r0.center().y())
+    drag(view, edge, edge + QPointF(-60, 0), mods=Qt.KeyboardModifier.ShiftModifier)
+    check(close(t.rect().width(), r0.width() - 60, 1 / view._scale()), "text box resizes from its edge")
+    view.set_layer_rect(t, r0)
+    ed.background.setChecked(False)
+    check(not t.style.background, "background off: transparent")
+    view.select(None)
+    check(not ed.text.isEnabled(), "editor disabled with nothing selected")
+    view.select(t)
+    check(ed.layer is t and ed.text.toPlainText() == "THE TWEEDY SISTERS", "editor follows the selection")
+    out = os.path.join(OUT, "text.pdf")
+    export_pdf(out, view.spec, view.layers)
+    with fitz.open(out) as d:
+        pg = d[0]
+        check(len(pg.get_drawings()) > 0 and pg.get_text().strip() == "", "text exported as vector outlines")
+        k = 4
+        pix = pg.get_pixmap(matrix=fitz.Matrix(k, k))
+        r = t.rect()
+        reds = greens = 0
+        for ix in range(int(r.left() * k), int(r.right() * k), 2):
+            for iy in range(int(r.top() * k), int(r.bottom() * k), 2):
+                c = pix.pixel(ix, iy)
+                reds += c[0] > 150 and c[1] < 60 and c[2] < 60
+                greens += c[1] > 150 and c[0] < 60 and c[2] < 60
+        check(reds > 50 and greens > 50, f"PDF shows red letters with a green outline ({reds}, {greens})")
+        corner = pix.pixel(int(r.left() * k) + 2, int(r.top() * k) + 2)
+        check(corner == (255, 255, 255), "transparent box leaves the page showing")
+        pix.save(os.path.join(OUT, "text-preview.png"))
+    proj = os.path.join(OUT, "text.cover.json")
+    save_project(proj, view.spec, view.layers)
+    _, layers2, problems = load_project(proj)
+    t2 = layers2[0] if layers2 else None
+    check(not problems and isinstance(t2, TextLayer) and t2.style == t.style
+          and close(t2.rect().x(), t.rect().x(), 1e-6) and close(t2.rect().height(), t.rect().height(), 1e-6),
+          "text box round-trips through the project")
+
+    d0 = TextLayer().style
+    check(d0.color == "#ffffff" and d0.outline and d0.outline_color == "#000000" and d0.align == "left"
+          and not d0.background, "defaults: white text, black outline on, left aligned, transparent")
+    r0 = t.rect()
+    ed.rotate_btn.click()
+    r = t.rect()
+    check(t.style.rotation == 90 and close(r.width(), r0.height(), 1e-6) and close(r.height(), r0.width(), 1e-6)
+          and close(r.center().x(), r0.center().x(), 1e-6) and close(r.center().y(), r0.center().y(), 1e-6),
+          "rotate: a quarter turn counterclockwise about the center")
+    check(t.text_size() == (r0.width(), r0.height()), "rotated text keeps its own width")
+    check(t.fitted_rect(grow_only=False).height() == r.height(), "a sideways box fits across its width")
+    export_pdf(out, view.spec, view.layers)
+    with fitz.open(out) as d:
+        pix = d[0].get_pixmap(matrix=fitz.Matrix(2, 2))
+        ys = [iy for ix in range(int(r.left() * 2), int(r.right() * 2), 2)
+              for iy in range(int(r.top() * 2), int(r.bottom() * 2), 2)
+              if (c := pix.pixel(ix, iy))[0] > 150 and c[1] < 60]
+        # Read bottom to top: the first letter sits near the bottom.
+        check(ys and max(ys) - min(ys) > 0.6 * r.height() * 2, "rotated text runs up the box in the PDF")
+        pix.save(os.path.join(OUT, "text-rotated.png"))
+    for _ in range(3):
+        ed.rotate_btn.click()
+    check(t.style.rotation == 0 and close(t.rect().width(), r0.width(), 1e-6), "four turns: back where it was")
+    ed.rotate_btn.click()
+    save_project(proj, view.spec, view.layers)
+    _, layers2, _ = load_project(proj)
+    check(layers2[0].style.rotation == 90 and close(layers2[0].rect().height(), t.rect().height(), 1e-6),
+          "rotation round-trips through the project")
+    ed.close()
+
     print("cover setup")
     view.apply_spec(CoverSpec(spine_width=0.5))
     check(close(view.page_rect().width() / 72, 11.75), "wider spine widens the page")

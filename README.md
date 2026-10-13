@@ -7,6 +7,7 @@ can upload straight to Kindle Direct Publishing.
 ![platform](https://img.shields.io/badge/platform-Windows-blue) ![python](https://img.shields.io/badge/python-3.12-blue)
 
 - Place pictures (PNG, JPG, PDF pages and more) on the cover by dragging or by typing exact inches.
+- Insert text boxes with a font, size, color, an optional background color and an optional font outline.
 - Trim, bleed, spine and safe-area guides match the KDP cover template, and everything snaps to them.
 - Rulers along the top and left show the cover, safe-area and picture sizes.
 - Exports one PDF page at the exact full-cover size. It is built from the original files, so nothing is resampled from the screen.
@@ -19,6 +20,7 @@ can upload straight to Kindle Direct Publishing.
 - [Quick start: make a cover in 6 steps](#quick-start-make-a-cover-in-6-steps)
 - [Setting up the cover size](#setting-up-the-cover-size)
 - [Placing and arranging pictures](#placing-and-arranging-pictures)
+- [Text boxes](#text-boxes)
 - [Guides, snapping and rulers](#guides-snapping-and-rulers)
 - [Barcode area](#barcode-area)
 - [Saving: projects and PDFs](#saving-projects-and-pdfs)
@@ -31,7 +33,7 @@ can upload straight to Kindle Direct Publishing.
 ## Requirements
 
 - Windows 10 or 11
-- [Python 3.12](https://www.python.org/downloads/). Tick *Add python.exe to PATH* or install the `py` launcher.
+- [Python 3.12](https://www.python.org/downloads/). Check *Add python.exe to PATH* or install the `py` launcher.
 - About 300 MB of disk space for the local virtual environment
 
 ## Install
@@ -83,7 +85,7 @@ From a terminal you can also run it without `run.bat`:
 3. **Add your artwork.** Click **Add picture…** (Ctrl+O), or drag files from
    Explorer onto the cover.
 4. **Position it.** Drag pictures into place, using the corner handles to
-   resize. They snap to the trim, spine, safe areas and centres. Art meant to
+   resize. They snap to the trim, spine, safe areas and centers. Art meant to
    reach the edge of the page should extend into the red-tinted bleed.
    Keep text inside the blue safe areas.
 5. **Check resolution.** The panel shows each picture's print resolution at
@@ -117,8 +119,8 @@ spine width using KDP's paperback formula (pages x thickness per page):
 |---|---|
 | White paper, black ink | 0.002252 |
 | Cream paper, black ink | 0.0025 |
-| White paper, standard colour | 0.002252 |
-| White paper, premium colour | 0.002347 |
+| White paper, standard color | 0.002252 |
+| White paper, premium color | 0.002347 |
 
 For example, 300 pages on cream paper gives 300 x 0.0025 = 0.75 in.
 
@@ -148,7 +150,7 @@ For a multi-page PDF you choose which page to place.
 | Place freely | Hold **Shift** while dragging or resizing to turn snapping off. |
 | Exact size or position | Type X, Y, Width or Height (inches, from the cover's top-left corner) in the panel and press Enter. With **Maintain ratio** on, the other side follows. |
 | Layer order | **Arrange** menu, or Ctrl+] / Ctrl+[ for forward / backward, Ctrl+Shift+] / Ctrl+Shift+[ for front / back. |
-| Delete | Delete or Backspace, or **Arrange → Delete picture**. |
+| Delete | Delete or Backspace, or **Arrange → Delete selected**. |
 | Zoom | Ctrl+wheel, Ctrl+= / Ctrl+-, Ctrl+0 to fit, Ctrl+1 for actual size. |
 | Pan | Drag with the middle mouse button. |
 
@@ -159,14 +161,45 @@ For a multi-page PDF you choose which page to place.
 - *Separate front and back art:* place the front image so its left edge snaps
   to the right spine edge and its right edge reaches the outer bleed. Place the
   back image the same way on the other side. Add a spine image (or a solid
-  colour image) snapped to both spine edges.
-- *Title and author text:* make them as transparent PNGs, or as a PDF exported
-  from Word, Affinity or Inkscape so they stay vector. Then place them inside
-  the safe areas.
+  color image) snapped to both spine edges.
+- *Title and author text:* use **Insert text** (see below), or make them as
+  transparent PNGs or a PDF from Word, Affinity or Inkscape. Then place them
+  inside the safe areas.
+
+## Text boxes
+
+Click **Insert text** on the toolbar (or File → Insert text, Ctrl+T). A text
+box appears in the middle of the cover and the **Text** editor opens beside it.
+Every change shows on the cover straight away:
+
+| Setting | What it does |
+|---|---|
+| Text | The text. Press Enter for a new line; long lines wrap to the box's width. |
+| Font, Size | Any installed font, in points. **B** / **I** for bold and italic; Left / Center / Right alignment (left by default). |
+| Color | The color of the letters. White by default. |
+| Background | Check *Colored* to fill the box with a color; uncheck for transparent. |
+| Font outline | Check *Colored* for an outline around the letters, with its color and thickness; uncheck for none. On, in black, by default. |
+
+Move and resize a text box like a picture: drag it, drag its handles, nudge
+it with the arrow keys, or type X, Y, Width and Height. It snaps the same way.
+The box grows taller when the text no longer fits; **Fit box to text** makes
+it exactly as tall as its text. Text past the box's edges is cut off.
+
+**⟲ Rotate** turns the box a quarter turn counterclockwise about its center,
+so one click gives text reading bottom to top, as on a spine. Click again for
+upside down, and so on; four clicks bring it back. A turned box still wraps its
+text along its own length.
+
+The editor follows the selection: click another text box to edit it, or
+double-click a text box to open the editor again after closing it.
+
+In the PDF the text is drawn as vector outlines, exactly as on screen, so it
+stays sharp and needs no fonts embedded. Projects store the text and its
+style in full.
 
 ## Guides, snapping and rulers
 
-Moving and resizing snap to the guides and to the edges and centres of the
+Moving and resizing snap to the guides and to the edges and centers of the
 other pictures. The guides are:
 
 - **Trim line**: red dashes. Everything outside it, the red-tinted bleed, is
@@ -174,7 +207,7 @@ other pictures. The guides are:
 - **Spine edges**: solid lines.
 - **Safe areas**: blue dashes, with the spine's safe area in blue dots. Keep
   text and important details inside them.
-- **Centres** of the back, spine, front and the cover's height: green dots.
+- **Centers** of the back, spine, front and the cover's height: green dots.
 
 The **Legend** box at the bottom of the panel shows which line is which.
 Hover over a guide on the cover to see its name and position.
@@ -188,7 +221,7 @@ three rows of dimension lines:
 - **Picture**: the selected picture's width (top ruler) or height (left ruler).
 
 The guides and the selected picture's edges continue into the rulers. Numbers
-too wide for their gap, such as the spine's, sit in boxes centred on it. Zoom
+too wide for their gap, such as the spine's, sit in boxes centered on it. Zoom
 in to see the spine's lines separate. Hover any number or line on a ruler for
 its exact start, end and size.
 
@@ -201,7 +234,7 @@ trim edge. It always sits above every picture and cannot be moved. Its size
 and position can be changed in **Cover → Cover setup…**.
 
 KDP prints the real barcode there, so keep important art out of it. It is
-left out of the PDF unless you tick *Include barcode placeholder in PDF*.
+left out of the PDF unless you check *Include barcode placeholder in PDF*.
 
 ## Saving: projects and PDFs
 
@@ -238,6 +271,7 @@ calculation, or a changed bleed.
 | Ctrl+Shift+O | Open project |
 | Ctrl+S / Ctrl+Shift+S | Save project / Save project as |
 | Ctrl+O | Add picture |
+| Ctrl+T | Insert text |
 | Ctrl+E | Save as PDF |
 | Arrow keys (Shift) | Nudge selected picture 0.01 in (0.1 in) |
 | Delete / Backspace | Delete selected picture |
@@ -269,7 +303,7 @@ calculation, or a changed bleed.
 
 This drives the real window headless. It covers loading every format,
 dragging, Shift, corner and edge resizing with snapping, typed sizes, layer
-order, the barcode, PDF export and project round-trips. Output goes to
+order, the barcode, text boxes, PDF export and project round-trips. Output goes to
 `tests\out\`, which git ignores.
 
 ## Code layout
@@ -281,7 +315,8 @@ run.bat                 launches the app with .venv\Scripts\pythonw.exe
 requirements.txt        pinned dependencies
 cover_editor/
   spec.py               cover geometry and guides (inches)
-  layers.py             picture loading, Layer and the barcode item
+  layers.py             picture loading, Layer, TextLayer and the barcode item
+  text_editor.py        the floating text editor
   canvas.py             the view: mouse, snapping, guides and handles
   rulers.py             the rulers and their dimension rows
   panel.py              the tool panel

@@ -3,19 +3,24 @@
 Each picture goes back to its original file, not the on-screen preview:
 JPEG and PNG files are embedded byte-for-byte where possible, other formats are
 converted losslessly to PNG, and a placed PDF page is drawn as vector content.
+A text box is painted by Qt into a one-page PDF of its own, as outlines, and
+placed the same way.
 Whatever hangs past the page edge is clipped by the page itself.
 """
 
 from __future__ import annotations
 
 import io
+import math
 import os
 import tempfile
 
 import pymupdf as fitz
 from PIL import Image, ImageOps
+from PySide6.QtCore import QBuffer, QIODevice, QMarginsF, QSizeF
+from PySide6.QtGui import QPageSize, QPainter, QPdfWriter
 
-from .layers import Layer
+from .layers import Layer, TextLayer
 from .spec import PT_PER_IN, CoverSpec
 
 EXIF_ORIENTATION = 0x0112
@@ -39,6 +44,21 @@ def _image_stream(path: str) -> bytes:
         return buf.getvalue()
 
 
+def _text_pdf(layer: TextLayer) -> fitz.Document:
+    buf = QBuffer()
+    buf.open(QIODevice.OpenModeFlag.WriteOnly)
+    writer = QPdfWriter(buf)
+    writer.setResolution(72)  # one unit = one point, as in the scene
+    # QPageSize keeps whole points, so round up; show_pdf_page clips to the exact box.
+    size = QSizeF(math.ceil(layer.size().width()), math.ceil(layer.size().height()))
+    writer.setPageSize(QPageSize(size, QPageSize.Unit.Point, "", QPageSize.SizeMatchPolicy.ExactMatch))
+    writer.setPageMargins(QMarginsF(0, 0, 0, 0))
+    painter = QPainter(writer)
+    layer.paint_content(painter)
+    painter.end()
+    return fitz.open("pdf", bytes(buf.data()))
+
+
 def _draw_barcode(page: fitz.Page, spec: CoverSpec) -> None:
     b = spec.barcode().pt()
     rect = fitz.Rect(b.x, b.y, b.right, b.bottom)
@@ -59,6 +79,11 @@ def export_pdf(path: str, spec: CoverSpec, layers: list[Layer], include_barcode:
             rect = fitz.Rect(r.left(), r.top(), r.right(), r.bottom())
             if rect.is_empty or not rect.intersects(page.rect):
                 continue  # entirely off the page
+            if isinstance(layer, TextLayer):
+                with _text_pdf(layer) as doc:
+                    page.show_pdf_page(rect, doc, 0, keep_proportion=False,
+                                       clip=fitz.Rect(0, 0, r.width(), r.height()))
+                continue
             src = layer.source
             if src.kind == "pdf":
                 if src.path not in sources:

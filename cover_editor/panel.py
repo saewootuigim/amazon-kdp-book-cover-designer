@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (QCheckBox, QFormLayout, QGridLayout, QGroupBox, Q
                                QVBoxLayout, QWidget)
 
 from .canvas import GUIDE_PENS, SELECT_COLOR, SNAP_COLOR, CoverView
-from .layers import Layer
+from .layers import Layer, TextLayer
 from .spec import PT_PER_IN, CoverSpec
 
 KDP_MIN_DPI = 300
@@ -41,7 +41,7 @@ LEGEND = [
     ("spine", "Spine edges", "The cover folds here."),
     ("safe", "Safe area", "Keep text and faces inside."),
     ("spine-safe", "Spine safe area", "Keep spine text inside."),
-    ("center", "Centre lines", "Middle of the back, spine and front, and of the height."),
+    ("center", "Center lines", "Middle of the back, spine and front, and of the height."),
     ("bleed", "Bleed", "Printed, then trimmed off. Extend background art into it."),
     ("barcode", "Barcode area", "Placeholder; Amazon prints the real barcode here."),
     ("selected", "Selected picture", "Its edges run out to the rulers."),
@@ -95,7 +95,7 @@ class ToolPanel(QWidget):
         root.setContentsMargins(8, 8, 8, 8)
 
         # --- pictures -----------------------------------------------------
-        pics = QGroupBox("Pictures")
+        pics = QGroupBox("Pictures and text")
         pl = QVBoxLayout(pics)
         row = QHBoxLayout()
         self.add_btn = QPushButton("Add picture…")
@@ -166,7 +166,7 @@ class ToolPanel(QWidget):
         self.orig_ratio_btn.setToolTip("Undo any stretching: restore the file's own proportions, keeping the width.")
         self.fill_btn = QPushButton("Fill full cover")
         self.fill_btn.setToolTip("Scale, keeping the ratio, until it covers the whole cover including "
-                                 "the bleed, centred. Anything past the edge is cut off.")
+                                 "the bleed, centered. Anything past the edge is cut off.")
         row.addWidget(self.orig_ratio_btn)
         row.addWidget(self.fill_btn)
         sl.addLayout(row)
@@ -338,7 +338,7 @@ class ToolPanel(QWidget):
         self.up_btn.setEnabled(has and idx < len(layers) - 1)
         self.down_btn.setEnabled(has and idx > 0)
         self.bottom_btn.setEnabled(has and idx > 0)
-        self.orig_ratio_btn.setEnabled(has)
+        self.orig_ratio_btn.setEnabled(has and not isinstance(layer, TextLayer))
         self.fill_btn.setEnabled(has)
         for edit in self.fields.values():
             edit.setEnabled(has)
@@ -377,6 +377,13 @@ class ToolPanel(QWidget):
         values = {"x": r.x(), "y": r.y(), "w": r.width(), "h": r.height()}
         for key, edit in self.fields.items():
             edit.setText(f"{values[key] / PT_PER_IN:.3f}")
+        if isinstance(layer, TextLayer):
+            st = layer.style
+            turned = f", rotated {st.rotation}°" if st.rotation else ""
+            self.sel_native.setText(f"Text: {st.family}, {st.size:g} pt{turned}")
+            self.sel_dpi.setText("Resolution: vector (exported as outlines)")
+            self.sel_dpi.setStyleSheet("")
+            return
         src = layer.source
         if src.kind == "pdf":
             self.sel_native.setText(
@@ -428,7 +435,7 @@ class ToolPanel(QWidget):
         if r != layer.rect():
             self.view.set_layer_rect(layer, r)
         else:
-            self._show_geometry(layer)  # normalise the formatting
+            self._show_geometry(layer)  # normalize the formatting
 
     def _original_ratio(self) -> None:
         layer = self.view.selected

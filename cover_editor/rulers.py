@@ -129,7 +129,7 @@ class Ruler(QWidget):
         side = "left" if self.horizontal else "top"
         length = self._length()
 
-        # The scale: grey off the page, white on it, blue under the selected picture.
+        # The scale: gray off the page, white on it, blue under the selected picture.
         p.fillRect(QRectF(0, SCALE_TOP, length, SCALE_PX), OFF_PAGE)
         u0, u1 = sorted((self._u(0), self._u(full)))
         p.fillRect(QRectF(u0, SCALE_TOP, u1 - u0, SCALE_PX), QColor("#ffffff"))
@@ -225,7 +225,7 @@ class Ruler(QWidget):
                 overflow.append((ua, ub, text, tw, tip))
 
         # Labels too wide for their span (the spine, at most zooms) sit side by
-        # side in boxes, centred on their run of neighbouring spans, in order.
+        # side in boxes, centered on their run of neighboring spans, in order.
         groups: list[list[tuple]] = []
         for item in sorted(overflow):
             if groups and item[0] - groups[-1][-1][1] < 1:

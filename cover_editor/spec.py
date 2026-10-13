@@ -24,8 +24,8 @@ PT_PER_IN = 72.0
 PAPER_THICKNESS = {
     "White paper, black ink": 0.002252,
     "Cream paper, black ink": 0.0025,
-    "White paper, standard colour": 0.002252,
-    "White paper, premium colour": 0.002347,
+    "White paper, standard color": 0.002252,
+    "White paper, premium color": 0.002347,
 }
 
 
