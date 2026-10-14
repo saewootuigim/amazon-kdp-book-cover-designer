@@ -95,7 +95,7 @@ From a terminal you can also run it without `run.bat`:
 
 ## Setting up the cover size
 
-The defaults match the KDP template for *The Legend of the Tweedy Sisters*:
+The defaults match a KDP template for a 5.5 x 8.5 in paperback:
 
 | Setting | Default |
 |---|---|

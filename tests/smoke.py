@@ -311,7 +311,7 @@ def main():
     t = view.layers[-1]
     check(isinstance(t, TextLayer) and view.selected is t, "Insert text adds and selects a text box")
     check(ed.isVisible() and ed.layer is t and ed.text.isEnabled(), "text editor opens on it")
-    ed.text.setPlainText("THE TWEEDY SISTERS")
+    ed.text.setPlainText("BOOK TITLE")
     ed.size.setValue(40)
     ed.color.set_color("#c00000")
     ed.color.colorChanged.emit("#c00000")
@@ -323,10 +323,10 @@ def main():
     ed.background_color.set_color("#ffff00")
     ed.background_color.colorChanged.emit("#ffff00")
     st = t.style
-    check(st.text == "THE TWEEDY SISTERS" and st.size == 40 and st.color == "#c00000" and st.outline
+    check(st.text == "BOOK TITLE" and st.size == 40 and st.color == "#c00000" and st.outline
           and st.outline_color == "#00c000" and st.background and st.background_color == "#ffff00",
           "editor changes reach the text box")
-    check(panel.layer_list.item(0).text() == "Text: THE TWEEDY SISTERS", "layer list shows the text")
+    check(panel.layer_list.item(0).text() == "Text: BOOK TITLE", "layer list shows the text")
     check(t.rect().height() >= t.content_height() - 1e-6, "box grew to fit the text")
     view.set_layer_rect(t, QRectF(spec.front().x * 72 + 36, 72, 4 * 72, t.rect().height()))
     r0 = t.rect()
@@ -343,7 +343,7 @@ def main():
     view.select(None)
     check(not ed.text.isEnabled(), "editor disabled with nothing selected")
     view.select(t)
-    check(ed.layer is t and ed.text.toPlainText() == "THE TWEEDY SISTERS", "editor follows the selection")
+    check(ed.layer is t and ed.text.toPlainText() == "BOOK TITLE", "editor follows the selection")
     out = os.path.join(OUT, "text.pdf")
     export_pdf(out, view.spec, view.layers)
     with fitz.open(out) as d:
